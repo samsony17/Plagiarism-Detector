@@ -1,0 +1,343 @@
+<!doctype html>
+<head>
+<link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
+<title>Plagiarism</title>
+<script src="/js/jquery.js"></script>
+
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="/css/bootstrap.min.css" integrity="sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="/css/bootstrap-theme.min.css" integrity="sha384-aUGj/X2zp5rLCbBxumKTCw2Z50WgIr1vs/PFN4praOTvYXWlVyh2UtNUU0KAUhAX" crossorigin="anonymous">
+
+<!-- Latest compiled and minified JavaScript -->
+<script src="/js/bootstrap.min.js" integrity="sha512-K1qjQ+NcF2TYO/eI3M6v8EiNYZfA95pQumfvcVrTHtwQVDG+aHRqLi/ETn2uB+1JqwYqVG3LIvdm9lj6imS/pQ==" crossorigin="anonymous"></script>
+<script>
+
+
+$(document).ready(function() {
+         
+           $("#uploadform").submit(function(event) {
+                      event.preventDefault();
+                     var data = new FormData(this);
+                     //console.log(data);
+                   $.ajax({
+                       type        : "POST",
+                       url         : "/",
+                       data        : data,
+                       contentType : false,
+                       processData : false
+                       }).done(function (data) {
+                            //console.log(data);
+                       });
+            });
+
+           $("#addfiles").click(function(){
+            var num = $("#fileuploads input").length;
+            num =  parseInt(num)
+            var html_string = $("#fileuploads").html()
+            for (i = num+1 ; i <= num+2 ; i++) {
+                n = i.toString();
+                html_string+= "<br><input type='file' class='form-control' name='file"+n+"'>";
+            }            
+                $("#fileuploads").html(html_string);
+           });
+
+           // for populating initial data
+           $.get( "/getfiles", function( data ) {
+                 //console.log(data);
+                 var html_string ="";
+                 if (data.length !=0){
+                 for (filename in data){
+                 html_string += "<option value='"+data[filename]+"'>"+data[filename]+"</option>"
+                   }
+                  $("#corpusfiles").html(html_string);
+                  $("#patternfiles").html(html_string);
+                 }
+            });
+           $("#plagcheck").click(function(){
+                 var post_obj = {};
+                 post_obj["pattern_files"] = $("#patternfiles").val();
+                 corpus_files = $("#corpusfiles").val();
+                 c_files = {}
+                 for (file in corpus_files ){
+                     c_files[file] = corpus_files[file];
+                 }
+                 post_obj['corpus_files'] = c_files;
+                 post_obj["algorithm"] = $("#algorithm").val();
+                 //console.log(post_obj);
+                 post_obj = JSON.stringify(post_obj);
+                 //console.log(post_obj);
+                 $.ajax({
+                     url: '/plagcheck',
+                     type: 'post',
+                     data: post_obj,
+                     dataType: 'text',
+                     success: function (data) {
+                      //console.log("success");
+                      //console.log(data);
+                      //$("#plagcheckoutput").html(data);
+                      var json_data = JSON.parse(data);
+                      $("#plagchecktime").html(json_data['execution_time']);
+                      html_string ="";
+                      for (key in json_data){
+                      if (key=="execution_time" || key=="algorithm"){
+                          continue;
+                      }
+                      html_string+="<tr>";
+                      for (x in json_data[key]){
+                          //console.log(json_data[key]);
+                      html_string += "<td>"+key+"</td>";
+                      html_string += "<td>"+json_data[key][x]['pattern']+"</td>";
+                      html_string += "<td>"+json_data[key][x]['text']+"</td>";
+                      html_string += "<td>"+json_data[key][x]['filename']+"</td>";
+                      html_string += "<td>"+json_data[key][x]['line']+"</td>";
+                      if (json_data['algorithm']=="lcss"){
+                      html_string += "<td>"+json_data[key][x]['sequence']+"</td>";
+                      }
+                      else{
+                      html_string += "<td>"+json_data[key][x]['positions']+"</td>";
+                      }
+                      html_string += "</tr>";
+                      }
+                         
+                     }
+                     $("#plagcheckoutput").html(html_string); 
+                     },
+                });
+           }); 
+           
+           $('ul.tabs li').click(function(){
+		var tab_id = $(this).attr('data-tab');
+
+		$('ul.tabs li').removeClass('current');
+		$('.tab-content').removeClass('current');
+
+		$(this).addClass('current');
+		$("#"+tab_id).addClass('current');
+	   });
+           $("#patterncheck").click(function(){
+                 var post_obj = {};
+                 post_obj['patterntext'] = $("#patterntext").val()
+                 post_obj['patternalgorithm'] = $("#patternalgorithm").val()
+                 post_obj['actualtext'] = $("#actualtext").val()
+                 
+                 post_obj = JSON.stringify(post_obj);
+                 //console.log(post_obj);
+                 $.ajax({
+                     url: '/patterncheck',
+                     type: 'post',
+                     data: post_obj,
+                     dataType: 'text',
+                     success: function (data) {
+                      //console.log("success response is");
+                      //console.log(data);
+                      var json_data = JSON.parse(data);
+                      //console.log(json_data);
+                      //$("#patterncheckoutput").html(jsonPretty);
+                      var html_string = "<tr>";
+                      html_string += "<td>"+json_data['algorithm']+"</td>";
+                      html_string += "<td>"+json_data['execution_time']+"</td>";
+                      html_string += "<td>"+json_data['patterntext']+"</td>";
+                      html_string += "<td>"+json_data['actualtext']+"</td>";
+                      if (json_data['algorithm']=="lcss"){
+                      html_string += "<td>"+json_data['sequence']+"</td>";
+                      }
+                      else{
+                      html_string += "<td>"+json_data['positions'].toString()+"</td>";
+                      }
+                      html_string += "</tr>";
+                      $("#patterncheckoutput").html(html_string);
+                       
+                     },
+                });
+           });
+
+});
+
+</script>
+<style>
+               body{
+			margin-top: 100px;
+			font-family: 'Trebuchet MS', serif;
+			line-height: 1.6
+		}
+		.container{
+			width: 90%;
+			margin: 0 auto;
+		}
+
+
+
+		ul.tabs{
+			margin: 0px;
+			padding: 0px;
+			list-style: none;
+		}
+		ul.tabs li{
+			background: none;
+			color: #222;
+			display: inline-block;
+			padding: 10px 15px;
+			cursor: pointer;
+		}
+
+		ul.tabs li.current{
+			background: #ededed;
+			color: #222;
+		}
+
+		.tab-content{
+			display: none;
+			background: #ededed;
+			padding: 15px;
+		}
+
+		.tab-content.current{
+			display: inherit;
+		}
+
+</style>
+</head>
+<body>
+<h1 align="center">Plagiarism Detector</h1>
+
+<div class="container">
+
+	<ul class="tabs">
+		<li class="tab-link current" data-tab="tab-1">Upload files </li>
+		<li class="tab-link" data-tab="tab-2">Plagiarism Checker</li>
+		<li class="tab-link" data-tab="tab-3">Pattern Matching</li>
+	</ul>
+
+	<div id="tab-1" class="tab-content current">
+            <button class="btn" id="addfiles"> Upload files </button>
+            <form method="post" id="uploadform">
+                <label for="inputPassword">Upload</label>
+                <div id="fileuploads">
+                    <input type="file" class="form-control" id="uploadfile" name="file1">
+                </div>
+                <br>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </form>
+	</div>
+	<div id="tab-2" class="tab-content">
+   
+<div class="container-fluid">
+        <div class="row">
+                <div class="col-md-12">
+                        <div class="row">
+                                <div class="col-md-5">
+                                        <h3>
+                                                Select the file
+                                        </h3>
+                                        <select class="form-control" id="patternfiles">
+                                        </select>
+                                </div>
+                                <div class="col-md-2" >
+                                        <h3>
+                                              Algorithm
+                                        </h3>
+                                        <select class="form-control" id="algorithm">
+                                            <option value="nss">Naive String Search</option>
+                                            <option value="lcss">LCSS</option>
+                                            <option value="kmp">KMP</option>
+                                            <option value="bm">Boyer Moore</option>
+                                        </select>
+
+                                </div>
+                                <div class="col-md-5">
+                                        <h3>
+                                                Select the Corpus file
+                                        </h3>
+                                         <select multiple class="form-control" id="corpusfiles">
+                                        </select>
+
+                                </div>
+                                <br>
+                                 <button class="btn btn-primary" id="plagcheck">Check for Plagiarism</button>
+                        </div>
+                        <h2> Output </h2>
+                         <h3>Execution Time In Seconds</h3>
+                          <h3 id="plagchecktime"></h3>
+                        <div >
+                          <table class="table table-hover">
+                            <thead>
+                            <tr>
+                            <th>Line No</th>
+                            <th>Pattern</th>
+                            <th>Text</th>
+                            <th>Corpus File name</th>
+                            <th>Line in corpus</th>
+                            <th>Positions/Sequence</th>
+                            </tr>
+                            </thead>
+                            <tbody id="plagcheckoutput">
+                            </tbody>
+                          </table>
+                        </div>
+                </div>
+        </div>
+</div>
+	</div>
+	<div id="tab-3" class="tab-content">
+
+<div class="container-fluid">
+        <div class="row">
+                <div class="col-md-12">
+                        <div class="row">
+                                <div class="col-md-5">
+                                        <h3>
+                                                Enter a Pattern
+                                        </h3>
+                                         <input type="email" class="form-control" id="patterntext">
+                                </div>
+                                <div class="col-md-2" >
+                                        <h3>
+                                              Algorithm
+                                        </h3>
+                                        <select class="form-control" id="patternalgorithm">
+                                            <option value="nss">Naive String Search</option>
+                                            <option value="lcss">LCSS</option>
+                                            <option value="kmp">KMP</option>
+                                            <option value="bm">Boyer Moore</option>
+                                        </select>
+
+                                </div>
+                                <div class="col-md-5">
+                                        <h3>
+                                                Enter a Text
+                                        </h3>
+                                         <input type="email" class="form-control" id="actualtext">
+
+                                </div>
+                        </div>
+                        <button class="btn btn-primary" id="patterncheck">Search Pattern</button>
+                        <div class="row">
+                          <table class="table table-hover">
+                               <thead>
+                                <tr>
+                                <th>Algorithm Name</th>
+                                <th>Execution Time </th>
+                                <th>Pattern</th>
+                                <th>Text</th>
+                                <th>Positions/Sequence</th>
+                                </tr>
+                               </thead>
+                               <tbody  id="patterncheckoutput">
+                            </tbody>
+                          </table>
+                        </div>
+                </div>
+        </div>
+</div>
+	</div>
+
+</div>
+<!-- container -->
+
+<body>
+</html>
+
+
+
